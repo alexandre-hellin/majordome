@@ -41,7 +41,7 @@ This design ensures low latency and responsive interactions while maximizing res
 
 ```bash
 git clone git@github.com:alexandre-hellin/majordome.git
-cd majordome-ai
+cd majordome
 ```
 
 ### 2. Create a Virtual Environment
