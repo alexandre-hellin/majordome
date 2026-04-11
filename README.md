@@ -7,7 +7,7 @@ directly to your device without relying on cloud services.
 ## ✨ Features
 
 - **🎤 Real-time Speech Recognition**: Powered by Faster Whisper for accurate voice-to-text transcription
-- **🧠 Local Language Model**: Uses Llama 3.2 1B Instruct for intelligent, context-aware responses
+- **🧠 Local Language Model**: Uses Llama 3.2 3B Instruct for intelligent, context-aware responses
 - **🔊 Natural Text-to-Speech**: French voice synthesis via Piper TTS with natural intonation
 - **⚡ Optimized Performance**: Runs efficiently on consumer-grade devices (CPU or GPU)
 - **🔒 Privacy-First**: All processing happens locally - no data leaves your machine
@@ -71,7 +71,7 @@ Models are **not included** in this repository and must be downloaded separately
 
 Faster Whisper downloads the `small` model automatically on first run and caches it locally. No manual download is required.
 
-#### Llama 3.2 1B Instruct — GGUF (Language Model)
+#### Llama 3.2 3B Instruct — GGUF (Language Model)
 
 Download the quantized model file from Hugging Face:
 
