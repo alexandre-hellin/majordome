@@ -47,7 +47,7 @@ def speak_interruptible(stream) -> str:
         buffer += token
         full_text += token
 
-        if any(buffer.rstrip().endswith(p) for p in (".", "!", "?", "\n")):
+        if any(buffer.rstrip().endswith(p) for p in (",", ".", "!", "?", "…", "\n")):
             sentence = buffer.strip()
             buffer = ""
             if sentence and not stop_event.is_set():
