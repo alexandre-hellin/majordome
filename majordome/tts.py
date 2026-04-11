@@ -1,4 +1,6 @@
 import io
+import queue
+import threading
 import wave
 import numpy as np
 import sounddevice as sd
@@ -19,19 +21,22 @@ config = SynthesisConfig(
 
 def speak_interruptible(stream) -> str:
     """
-    Processes a stream of text data and allows interruption to dynamically handle streaming text generation.
-    The function continuously reads chunks from the provided stream while checking for an external interruption
-    event. It accumulates and outputs text token by token, grouping them into sentences based on predefined
-    delimiters. Once a complete sentence is formed, it processes and outputs the sentence, while allowing
-    external interruptions. Finally, any remaining buffered text is processed and returned.
-
-    :param stream: An iterable stream of data chunks where each chunk contains a "choices" key holding
-                   a sequence of delta outputs with optional "content" text.
-    :type stream: iterable
-    :return: The fully processed and concatenated text from the input stream, including all sentences
-             generated before interruption or completion.
-    :rtype: str
+    Streams LLM tokens and feeds sentences to a TTS worker thread so that
+    LLM generation and audio playback run concurrently.
     """
+    sentence_queue = queue.Queue()
+
+    def tts_worker():
+        while True:
+            _sentence = sentence_queue.get()
+            if _sentence is None:
+                break
+            if not stop_event.is_set():
+                _speak_text(_sentence)
+
+    tts_thread = threading.Thread(target=tts_worker, daemon=True)
+    tts_thread.start()
+
     buffer = ""
     full_text = ""
 
@@ -50,12 +55,14 @@ def speak_interruptible(stream) -> str:
         if any(buffer.rstrip().endswith(p) for p in (",", ".", "!", "?", "…", "\n")):
             sentence = buffer.strip()
             buffer = ""
-            if sentence and not stop_event.is_set():
-                _speak_text(sentence)
+            if sentence:
+                sentence_queue.put(sentence)
 
     if buffer.strip() and not stop_event.is_set():
-        _speak_text(buffer.strip())
-        full_text += buffer
+        sentence_queue.put(buffer.strip())
+
+    sentence_queue.put(None)  # sentinel: signal worker to stop
+    tts_thread.join()
 
     print()
     return full_text
