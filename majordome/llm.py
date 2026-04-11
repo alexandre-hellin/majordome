@@ -5,7 +5,7 @@ import sys
 import random
 
 MODEL_PATH = "models/Llama-3.2-3B-Instruct-Q4_K_M.gguf"
-CONTEXT_SIZE = 131072 >> 3
+CONTEXT_SIZE = 131072
 WEEKDAY = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
 SYSTEM_PROMPT = f"""
 Tu es un majordome français élégant, vif et plein d'esprit.
@@ -71,6 +71,9 @@ def _init_llm():
             n_ctx=CONTEXT_SIZE,
             n_threads=os.cpu_count(),
             chat_format="llama-3",  # Activate native ChatML format
+            type_k=2, # q4_0
+            type_v=2, # q4_0
+            flash_attn=True,
             verbose=False
         )
 
