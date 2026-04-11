@@ -2,6 +2,12 @@ from faster_whisper import WhisperModel
 import torch
 import numpy as np
 
+# STT – Input Audio Configuration
+SAMPLE_RATE = 16000
+CHUNK_SIZE = 512
+SILENCE_THRESH = 0.015
+SILENCE_SECS = 0.8  # Silence after speaking → end of utterance
+PRE_ROLL_SECS = 0.3  # Chunks kept before voice detection
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 WHISPER_MODEL = "small"
 LANGUAGE = "fr"
@@ -10,7 +16,7 @@ BEAM_SIZE = 5
 whisper = None
 
 
-def transcribe_audio(audio: np.ndarray, sample_rate: int = 16000) -> str:
+def transcribe_audio(audio: np.ndarray, sample_rate: int = SAMPLE_RATE) -> str:
     """
     Transcribes audio data using the Whisper model and returns the recognized text. The function processes provided
     audio input to ensure compatibility with the model, including format and dimensionality adjustments. It incorporates
@@ -18,7 +24,7 @@ def transcribe_audio(audio: np.ndarray, sample_rate: int = 16000) -> str:
     outputs deterministic text by disabling sampling and applying thresholds for noise and abnormal repetitions.
 
     :param audio: Audio data represented as a 1D or 2D NumPy array. If 2D, the audio will be averaged across channels.
-    :param sample_rate: Sample rate of the audio input in Hertz. Default is 16000 Hz.
+    :param sample_rate: Sample rate of the audio input in Hertz. Default is defined by the SAMPLE_RATE variable.
     :type audio: numpy.ndarray
     :type sample_rate: int
     :return: Transcribed text as a string, or an empty string for short, invalid, or low-confidence audio.
