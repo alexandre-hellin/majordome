@@ -64,6 +64,7 @@ llm = None
 def preload():
     """Preload the LLM at startup."""
     _init_llm()
+    _warmup()
 
 
 def _init_llm():
@@ -97,4 +98,14 @@ def ask_llm(history: list, max_tokens=128, temperature=0.7, seed=None):
         temperature=temperature,
         seed=random.randint(~sys.maxsize, sys.maxsize),
         stream=True
+    )
+
+
+def _warmup():
+    """Warm up the LLM by generating a single token."""
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+
+    llm.create_chat_completion(
+        messages=messages,
+        max_tokens=1  # Only prefill, no generation
     )
