@@ -1,6 +1,8 @@
 from datetime import datetime
 from llama_cpp import Llama
 import os
+import sys
+import random
 
 MODEL_PATH = "models/Llama-3.2-1B-Instruct-Q4_K_M.gguf"
 CONTEXT_SIZE = 131072 >> 3
@@ -73,9 +75,10 @@ def _init_llm():
         )
 
 
-def ask_llm(history: list, max_tokens=128, temperature=0.7):
+def ask_llm(history: list, max_tokens=128, temperature=0.7, seed=None):
     """Stream tokens out of the LLM."""
     _init_llm()  # Initialize model if not already loaded
+    random.seed(seed)
 
     messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history
 
@@ -83,5 +86,6 @@ def ask_llm(history: list, max_tokens=128, temperature=0.7):
         messages=messages,
         max_tokens=max_tokens,
         temperature=temperature,
+        seed=random.randint(~sys.maxsize, sys.maxsize),
         stream=True
     )
