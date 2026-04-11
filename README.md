@@ -21,7 +21,7 @@ Majordome uses a multithreaded pipeline architecture:
 
 1. **Audio Capture Thread**: Continuously captures audio from your microphone
 2. **VAD + ASR Thread**: Detects speech and transcribes it using Whisper
-3. **LLM + TTS Thread**: Generates responses via Llama and speaks them using Piper
+3. **LLM + TTS Thread**: Generates responses via Llama and speaks them using OmniVoice
 
 This design ensures low latency and responsive interactions while maximizing resource efficiency.
 
@@ -127,7 +127,7 @@ Speak into your microphone after startup. Majordome will transcribe your speech,
 
 ## ⚠️ Disclaimers
 
-Majordome is not the creator, originator, or owner of any third-party model used with this project. Each model (including but not limited to Llama, Whisper, and Piper voices) is created and provided by independent third parties. Majordome does not endorse, support, represent, or guarantee the completeness, truthfulness, accuracy, or reliability of any such model.
+Majordome is not the creator, originator, or owner of any third-party model used with this project. Each model (including but not limited to Llama, Whisper, and OmniVoice) is created and provided by independent third parties. Majordome does not endorse, support, represent, or guarantee the completeness, truthfulness, accuracy, or reliability of any such model.
 
 You understand that these models can produce content that might be offensive, harmful, inaccurate, inappropriate, or deceptive. Each model is the sole responsibility of the person or entity who originated it. Majordome does not monitor or control third-party models and cannot take responsibility for their outputs.
 
