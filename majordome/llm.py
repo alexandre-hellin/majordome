@@ -61,7 +61,7 @@ Il est actuellement {datetime.now().strftime('%H:%M')} le {WEEKDAY[datetime.toda
 llm = None
 
 
-def ask_llm(history: list, max_tokens=128, temperature=0.7, seed=None):
+def ask_llm(history: list, max_tokens=128, temperature=0.2, seed=None):
     """Stream tokens out of the LLM."""
     _init_llm()  # Initialize model if not already loaded
     random.seed(seed)
