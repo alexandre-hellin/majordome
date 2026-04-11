@@ -5,10 +5,11 @@ from pathlib import Path
 import os
 import sys
 import random
+import torch
 
 # LLM – Large Language Model Configuration
 MODEL_PATH = str(Path(__file__).parent.parent / "models" / "Llama-3.2-3B-Instruct-Q4_K_M.gguf")
-CONTEXT_SIZE = 131072
+CONTEXT_SIZE = 131072 >> 3
 WEEKDAY = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
 SYSTEM_PROMPT = f"""
 Tu es un majordome français élégant, vif et plein d'esprit.
@@ -96,6 +97,7 @@ def _init_llm():
             n_threads=os.cpu_count() // 2,
             n_batch=512,
             n_ubatch=512,
+            n_gpu_layers=-1 if torch.cuda.is_available() else 0,
             chat_format="llama-3",  # Activate native ChatML format
             type_k=2, # q4_0
             type_v=2, # q4_0
