@@ -61,6 +61,22 @@ Il est actuellement {datetime.now().strftime('%H:%M')} le {WEEKDAY[datetime.toda
 llm = None
 
 
+def ask_llm(history: list, max_tokens=128, temperature=0.7, seed=None):
+    """Stream tokens out of the LLM."""
+    _init_llm()  # Initialize model if not already loaded
+    random.seed(seed)
+
+    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history
+
+    return llm.create_chat_completion(
+        messages=messages,
+        max_tokens=max_tokens,
+        temperature=temperature,
+        seed=random.randint(~sys.maxsize, sys.maxsize),
+        stream=True
+    )
+
+
 def preload():
     """Preload the LLM at startup."""
     _init_llm()
@@ -83,22 +99,6 @@ def _init_llm():
             flash_attn=True,
             verbose=False
         )
-
-
-def ask_llm(history: list, max_tokens=128, temperature=0.7, seed=None):
-    """Stream tokens out of the LLM."""
-    _init_llm()  # Initialize model if not already loaded
-    random.seed(seed)
-
-    messages = [{"role": "system", "content": SYSTEM_PROMPT}] + history
-
-    return llm.create_chat_completion(
-        messages=messages,
-        max_tokens=max_tokens,
-        temperature=temperature,
-        seed=random.randint(~sys.maxsize, sys.maxsize),
-        stream=True
-    )
 
 
 def _warmup():
