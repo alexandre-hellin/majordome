@@ -76,13 +76,13 @@ Faster Whisper downloads the `small` model automatically on first run and caches
 Download the quantized model file from Hugging Face:
 
 ```
-https://huggingface.co/lmstudio-community/Llama-3.2-1B-Instruct-GGUF
+https://huggingface.co/lmstudio-community/Llama-3.2-3B-Instruct-GGUF
 ```
 
-Download the file named **`Llama-3.2-1B-Instruct-Q4_K_M.gguf`** and place it at:
+Download the file named **`Llama-3.2-3B-Instruct-Q4_K_M.gguf`** and place it at:
 
 ```
-models/Llama-3.2-1B-Instruct-Q4_K_M.gguf
+models/Llama-3.2-3B-Instruct-Q4_K_M.gguf
 ```
 
 #### Piper TTS — French Voice (Text-to-Speech)
@@ -104,8 +104,8 @@ models/fr_FR-upmc-medium.onnx.json
 
 ```
 models/
-├── Llama-3.2-1B-Instruct-Q4_K_M.gguf   (~808 MB)
-├── fr_FR-upmc-medium.onnx               (~77 MB)
+├── Llama-3.2-3B-Instruct-Q4_K_M.gguf
+├── fr_FR-upmc-medium.onnx
 └── fr_FR-upmc-medium.onnx.json
 ```
 

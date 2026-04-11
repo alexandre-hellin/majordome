@@ -4,7 +4,7 @@ import os
 import sys
 import random
 
-MODEL_PATH = "models/Llama-3.2-1B-Instruct-Q4_K_M.gguf"
+MODEL_PATH = "models/Llama-3.2-3B-Instruct-Q4_K_M.gguf"
 CONTEXT_SIZE = 131072 >> 3
 WEEKDAY = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
 SYSTEM_PROMPT = f"""
