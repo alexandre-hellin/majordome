@@ -1,10 +1,13 @@
 from datetime import datetime
 from llama_cpp import Llama
+from pathlib import Path
+
 import os
 import sys
 import random
 
-MODEL_PATH = "models/Llama-3.2-3B-Instruct-Q4_K_M.gguf"
+# LLM – Large Language Model Configuration
+MODEL_PATH = str(Path(__file__).parent.parent / "models" / "Llama-3.2-3B-Instruct-Q4_K_M.gguf")
 CONTEXT_SIZE = 131072
 WEEKDAY = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"]
 SYSTEM_PROMPT = f"""
