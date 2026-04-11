@@ -61,11 +61,15 @@ Il est actuellement {datetime.now().strftime('%H:%M')} le {WEEKDAY[datetime.toda
 llm = None
 
 
+def preload():
+    """Preload the LLM at startup."""
+    _init_llm()
+
+
 def _init_llm():
     """Initialize the LLM if not already loaded."""
     global llm
     if llm is None:
-        print("🧠 Chargement du LLM...")
         llm = Llama(
             model_path=MODEL_PATH,
             n_ctx=CONTEXT_SIZE,

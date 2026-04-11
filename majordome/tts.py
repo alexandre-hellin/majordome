@@ -68,6 +68,11 @@ def speak_interruptible(stream) -> str:
     return full_text
 
 
+def preload():
+    """Preload the TTS voice at startup."""
+    _init_voice()
+
+
 def _init_voice():
     """Initialize the Piper voice if not already loaded."""
     global voice

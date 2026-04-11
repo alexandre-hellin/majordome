@@ -63,9 +63,13 @@ def transcribe_audio(audio: np.ndarray, sample_rate: int = 16000) -> str:
     return " ".join(texts).strip()
 
 
+def preload():
+    """Preload Whisper at startup."""
+    _init_whisper()
+
+
 def _init_whisper():
     """Initialize Whisper if not already loaded."""
     global whisper
     if whisper is None:
-        print("📡 Chargement de Whisper...")
         whisper = WhisperModel(WHISPER_MODEL, device=DEVICE, compute_type="auto")
