@@ -4,6 +4,7 @@ import time
 
 from majordome import audio_capture_thread, vad_asr_thread, llm_tts_thread, get_persona
 from majordome import preload_stt, preload_llm, preload_tts, preload_persona
+from majordome import shutdown_tts
 
 
 def main():
@@ -21,6 +22,7 @@ def main():
         while True:
             time.sleep(0.1)
     except KeyboardInterrupt:
+        _shutdown_all()
         print("\n🛑 Arrêt.")
 
 
@@ -35,6 +37,10 @@ def _preload_all():
         ]
         for future in concurrent.futures.as_completed(futures):
             future.result()
+
+
+def _shutdown_all():
+    shutdown_tts()
 
 
 if __name__ == "__main__":

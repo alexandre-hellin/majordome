@@ -15,12 +15,11 @@ AUDIO_BUFFER_SIZE = 4  # Max sentences pre-generated in advance
 SENTENCE_END_TOKENS = (",", ".", "!", "?", "…", "\n")
 
 model = None
-
+tts_audio_queue = queue.Queue(maxsize=AUDIO_BUFFER_SIZE)
 
 def speak_interruptible(stream) -> str:
     """Stream LLM tokens, synthesize sentences via TTS, and play them back."""
     sentence_queue = queue.Queue()
-    tts_audio_queue = queue.Queue(maxsize=AUDIO_BUFFER_SIZE)
 
     tts_thread = threading.Thread(target=_tts_worker, args=(sentence_queue, tts_audio_queue), daemon=True)
     playback_thread = threading.Thread(target=_playback_worker, args=(tts_audio_queue,), daemon=True)
@@ -63,6 +62,12 @@ def preload():
     _warmup_model()
 
 
+def shutdown():
+    """Shutdown the TTS thread gracefully."""
+    stop_event.set()
+    tts_audio_queue.put(None)
+
+
 def _tts_worker(sentence_queue: queue.Queue, audio_queue: queue.Queue) -> None:
     """Generate TTS audio tensors ahead of playback."""
     while True:
@@ -81,14 +86,19 @@ def _tts_worker(sentence_queue: queue.Queue, audio_queue: queue.Queue) -> None:
 
 def _playback_worker(audio_queue: queue.Queue) -> None:
     """Write audio chunks to the output stream block by block."""
-    with sd.OutputStream(samplerate=SAMPLE_RATE, channels=1, dtype="float32") as stream:
-        while True:
-            audio = audio_queue.get()
-            if audio is None:
-                break
-            if not stop_event.is_set():
-                stream.write(audio.astype("float32"))
-
+    try:
+        with sd.OutputStream(samplerate=SAMPLE_RATE, channels=1, dtype="float32") as stream:
+            while True:
+                audio = audio_queue.get()
+                if audio is None:
+                    break
+                if not stop_event.is_set():
+                    try:
+                        stream.write(audio.astype("float32"))
+                    except sd.PortAudioError:
+                        break
+    except Exception:
+        pass  # Avoid unexpected exception from happening when exiting the thread with SIGINT
 
 def _flush_buffer(buffer: str, sentence_queue: queue.Queue) -> str:
     """Send a completed sentence to the TTS queue and reset the buffer."""
