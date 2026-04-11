@@ -1,4 +1,5 @@
 from faster_whisper import WhisperModel
+from .config import config
 import torch
 import numpy as np
 
@@ -9,7 +10,7 @@ SILENCE_THRESH = 0.015
 SILENCE_SECS = 0.8  # Silence after speaking → end of utterance
 PRE_ROLL_SECS = 0.3  # Chunks kept before voice detection
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-WHISPER_MODEL = "small"
+WHISPER_MODEL = config.get("stt", {}).get("model", "small")
 LANGUAGE = "fr"
 BEAM_SIZE = 5
 

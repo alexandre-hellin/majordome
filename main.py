@@ -2,12 +2,13 @@ import concurrent.futures
 import threading
 import time
 
-from majordome import audio_capture_thread, vad_asr_thread, llm_tts_thread, preload_stt, preload_llm, preload_tts
+from majordome import audio_capture_thread, vad_asr_thread, llm_tts_thread, get_persona
+from majordome import preload_stt, preload_llm, preload_tts, preload_persona
 
 
 def main():
     _preload_all()
-    print("🟢 Majordome démarré. Ctrl+C pour quitter.")
+    print(f"🟢 Majordome démarré ({get_persona().display_name}). Ctrl+C pour quitter.")
 
     threads = [
         threading.Thread(target=audio_capture_thread, daemon=True),
@@ -25,6 +26,7 @@ def main():
 
 def _preload_all():
     print("⏳ Un instant…")
+    preload_persona()
     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as executor:
         futures = [
             executor.submit(preload_stt),

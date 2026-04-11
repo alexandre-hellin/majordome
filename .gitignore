@@ -32,7 +32,13 @@ env/
 
 # Model files
 models/*
-!models/.gitkeep
+
+# Persona files
+personas/*
+!personas/default
+
+# User specific configuration
+config.toml
 
 # OS specific
 .DS_Store

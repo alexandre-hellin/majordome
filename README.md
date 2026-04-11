@@ -8,7 +8,7 @@ directly to your device without relying on cloud services.
 
 - **🎤 Real-time Speech Recognition**: Powered by Faster Whisper for accurate voice-to-text transcription
 - **🧠 Local Language Model**: Uses Llama 3.2 3B Instruct for intelligent, context-aware responses
-- **🔊 Natural Text-to-Speech**: French voice synthesis via Piper TTS with natural intonation
+- **🗣️ Voice Cloning & Personas**: Powered by OmniVoice for expressive, multilingual text-to-speech with custom voice personas
 - **⚡ Optimized Performance**: Runs efficiently on consumer-grade devices (CPU or GPU)
 - **🔒 Privacy-First**: All processing happens locally - no data leaves your machine
 - **🇫🇷 French Language Support**: Fully optimized for French language interactions
@@ -85,31 +85,39 @@ Download the file named **`Llama-3.2-3B-Instruct-Q4_K_M.gguf`** and place it at:
 models/Llama-3.2-3B-Instruct-Q4_K_M.gguf
 ```
 
-#### Piper TTS — French Voice (Text-to-Speech)
-
-Use the Piper CLI (available after installing dependencies) to download the French UPMC medium voice directly into `models/`:
-
-```bash
-python -m piper.download_voices --download-dir models fr_FR-upmc-medium
-```
-
-This will place both required files in `models/`:
-
-```
-models/fr_FR-upmc-medium.onnx
-models/fr_FR-upmc-medium.onnx.json
-```
-
 #### Expected `models/` directory layout
 
 ```
 models/
-├── Llama-3.2-3B-Instruct-Q4_K_M.gguf
-├── fr_FR-upmc-medium.onnx
-└── fr_FR-upmc-medium.onnx.json
+└──Llama-3.2-3B-Instruct-Q4_K_M.gguf
 ```
 
-### 5. Run Majordome
+#### OmniVoice (Voice Cloning & Persona TTS)
+
+Majordome uses [OmniVoice](https://huggingface.co/k2-fsa/OmniVoice) for expressive, multilingual
+text-to-speech synthesis. The required model is **downloaded automatically on first run** — no
+manual setup needed.
+
+To give Majordome a distinct voice personality, you can provide your own reference audio clips.
+Drop one or more `.wav` files sampled at **24 000 Hz** and lasting between **3 and 10 seconds**
+into the `personas/` directory. Each file defines a different vocal persona: OmniVoice will
+clone the timbre, prosody, and style of the speaker in that clip and use it for synthesis.
+Multiple files in the folder let you switch between personalities at runtime. OmniVoice supports
+a wide range of languages out of the box, so your personas are not limited to French — any
+language present in the reference audio will carry over naturally to the generated speech.
+
+### 5. Configure Majordome
+
+Copy the example configuration file and adjust it to your needs:
+
+```bash
+cp config.toml.example config.toml
+```
+
+Open `config.toml` and set your preferred persona, STT model, and LLM model. The default
+values work out of the box for most setups.
+
+### 6. Run Majordome
 
 ```bash
 python main.py

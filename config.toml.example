@@ -1,0 +1,11 @@
+[persona]
+name = "default"
+
+[stt]
+model = "small"
+
+[llm]
+model = "Llama-3.2-3B-Instruct-Q4_K_M.gguf"
+
+[tts]
+model = "k2-fsa/OmniVoice"

@@ -1,41 +1,31 @@
-import io
 import queue
 import threading
-import wave
-import numpy as np
 import sounddevice as sd
+import torch
 
-from piper import PiperVoice, SynthesisConfig
+from omnivoice import OmniVoice
+
+from .config import config
+from .persona import get_persona
 from .shared import stop_event
 
-MODEL_PATH = "models/fr_FR-upmc-medium.onnx"
+# TTS – Output Audio Configuration
+SAMPLE_RATE = 24000
+AUDIO_BUFFER_SIZE = 4  # Max sentences pre-generated in advance
+SENTENCE_END_TOKENS = (",", ".", "!", "?", "…", "\n")
 
-voice = None
-config = SynthesisConfig(
-    length_scale=1.1,
-    noise_scale=0.6,
-    noise_w_scale=0.8,
-    normalize_audio=True
-)
+model = None
 
 
 def speak_interruptible(stream) -> str:
-    """
-    Streams LLM tokens and feeds sentences to a TTS worker thread so that
-    LLM generation and audio playback run concurrently.
-    """
+    """Stream LLM tokens, synthesize sentences via TTS, and play them back."""
     sentence_queue = queue.Queue()
+    tts_audio_queue = queue.Queue(maxsize=AUDIO_BUFFER_SIZE)
 
-    def tts_worker():
-        while True:
-            _sentence = sentence_queue.get()
-            if _sentence is None:
-                break
-            if not stop_event.is_set():
-                _speak_text(_sentence)
-
-    tts_thread = threading.Thread(target=tts_worker, daemon=True)
+    tts_thread = threading.Thread(target=_tts_worker, args=(sentence_queue, tts_audio_queue), daemon=True)
+    playback_thread = threading.Thread(target=_playback_worker, args=(tts_audio_queue,), daemon=True)
     tts_thread.start()
+    playback_thread.start()
 
     buffer = ""
     full_text = ""
@@ -52,62 +42,92 @@ def speak_interruptible(stream) -> str:
         buffer += token
         full_text += token
 
-        if any(buffer.rstrip().endswith(p) for p in (",", ".", "!", "?", "…", "\n")):
-            sentence = buffer.strip()
-            buffer = ""
-            if sentence:
-                sentence_queue.put(sentence)
+        if buffer.rstrip().endswith(SENTENCE_END_TOKENS):
+            buffer = _flush_buffer(buffer, sentence_queue)
 
+    # Send any remaining text
     if buffer.strip() and not stop_event.is_set():
-        sentence_queue.put(buffer.strip())
+        _flush_buffer(buffer, sentence_queue)
 
-    sentence_queue.put(None)  # sentinel: signal worker to stop
+    sentence_queue.put(None)  # Signal end of stream to TTS worker
     tts_thread.join()
+    playback_thread.join()
 
     print()
     return full_text
 
 
 def preload():
-    """Preload the TTS voice at startup."""
-    _init_voice()
+    """Preload the OmniVoice model at startup."""
+    _init_model()
+    _warmup_model()
 
 
-def _init_voice():
-    """Initialize the Piper voice if not already loaded."""
-    global voice
-    if voice is None:
-        voice = PiperVoice.load(MODEL_PATH)
+def _tts_worker(sentence_queue: queue.Queue, audio_queue: queue.Queue) -> None:
+    """Generate TTS audio tensors ahead of playback."""
+    while True:
+        sentence = sentence_queue.get()
+        if sentence is None:
+            audio_queue.put(None)  # Propagate sentinel to playback
+            break
+        if stop_event.is_set():
+            continue  # Drain queue without processing
+        try:
+            for tensor in model.generate(text=sentence, ref_audio=get_persona().audio):
+                audio_queue.put(tensor.squeeze().cpu().numpy())
+        except Exception as e:
+            print("❌ TTS error:", e)
 
 
-def _speak_text(text: str):
-    """Speak the given text using the Piper voice."""
+def _playback_worker(audio_queue: queue.Queue) -> None:
+    """Write audio chunks to the output stream block by block."""
+    with sd.OutputStream(samplerate=SAMPLE_RATE, channels=1, dtype="float32") as stream:
+        while True:
+            audio = audio_queue.get()
+            if audio is None:
+                break
+            if not stop_event.is_set():
+                stream.write(audio.astype("float32"))
+
+
+def _flush_buffer(buffer: str, sentence_queue: queue.Queue) -> str:
+    """Send a completed sentence to the TTS queue and reset the buffer."""
+    sentence = buffer.strip()
+    if sentence:
+        sentence_queue.put(sentence)
+    return ""
+
+
+def _init_model():
+    """Initialize the OmniVoice model if not already loaded."""
+    global model
+    if model is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        dtype = torch.float16 if device == "cuda" else torch.float32
+
+        model = OmniVoice.from_pretrained(
+            config.get("tts", {}).get("model", ""),
+            device_map=device,
+            dtype=dtype,
+        )
+
+
+def _warmup_model():
+    """
+    Warm up the OmniVoice model by running a silent inference pass.
+    This pre-allocates memory and improves performance.
+    """
+    warmup_text = "Bonjour !"
+
     try:
-        _init_voice()  # Initialize model if not already loaded
+        audio_tensors = model.generate(
+            text=warmup_text,
+            ref_audio=get_persona().audio,
+        )
 
-        buf = io.BytesIO()
-        with wave.open(buf, "wb") as wav_file:
-            # Parameters set before piper writes anything
-            wav_file.setnchannels(1)  # mono (upmc-medium is mono)
-            wav_file.setsampwidth(2)  # 16 bits
-            wav_file.setframerate(22050)  # upmc-medium model frequency
-            voice.synthesize_wav(text, wav_file, syn_config=config)
-
-        buf.seek(0)
-        with wave.open(buf, "rb") as wav_file:
-            framerate = wav_file.getframerate()
-            n_channels = wav_file.getnchannels()
-            sampwidth = wav_file.getsampwidth()
-            frames = wav_file.readframes(wav_file.getnframes())
-
-        dtype_map = {1: np.int8, 2: np.int16, 4: np.int32}
-        audio = np.frombuffer(frames, dtype=dtype_map[sampwidth])
-
-        if n_channels > 1:
-            audio = audio.reshape(-1, n_channels)
-
-        sd.play(audio, samplerate=framerate)
-        sd.wait()
+        # Consume the tensors to trigger full computation without playing audio
+        for tensor in audio_tensors:
+            _ = tensor.squeeze().cpu().numpy()
 
     except Exception as e:
-        print("❌ Erreur TTS :", e)
+        print("❌ Model warmup failed:", e)
