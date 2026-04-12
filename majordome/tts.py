@@ -12,7 +12,7 @@ from .shared import stop_event
 # TTS – Output Audio Configuration
 SAMPLE_RATE = 24000
 AUDIO_BUFFER_SIZE = 4  # Max sentences pre-generated in advance
-SENTENCE_END_TOKENS = (",", ".", "!", "?", "…")
+SENTENCE_END_TOKENS = ("! ", "? ", ". ", ".\n", "!\n", "?\n")
 TOKEN_THRESHOLD = 10  # Minimum number of tokens before cutting a sentence
 
 model = None
