@@ -15,7 +15,7 @@ CONTEXT_SIZE = 131072 >> 3
 
 llm = None
 
-def ask_llm(history: list, max_tokens=128, temperature=0.2, seed=None):
+def ask_llm(history: list, max_tokens=512, temperature=1.0, seed=None):
     """Stream tokens out of the LLM."""
     random.seed(seed)
 
@@ -25,6 +25,8 @@ def ask_llm(history: list, max_tokens=128, temperature=0.2, seed=None):
         messages=messages,
         max_tokens=max_tokens,
         temperature=temperature,
+        top_p=0.95,
+        top_k=64,
         seed=random.randint(~sys.maxsize, sys.maxsize),
         stream=True
     )
@@ -47,7 +49,6 @@ def _init_llm():
             n_batch=512,
             n_ubatch=512,
             n_gpu_layers=-1 if torch.cuda.is_available() else 0,
-            chat_format="llama-3",  # Activate native ChatML format
             type_k=2, # q4_0
             type_v=2, # q4_0
             flash_attn=True,

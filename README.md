@@ -7,7 +7,7 @@ directly to your device without relying on cloud services.
 ## ✨ Features
 
 - **🎤 Real-time Speech Recognition**: Powered by Faster Whisper for accurate voice-to-text transcription
-- **🧠 Local Language Model**: Uses Llama 3.2 3B Instruct for intelligent, context-aware responses
+- **🧠 Local Language Model**: Uses Gemma 4 E4B for intelligent, context-aware responses
 - **🗣️ Voice Cloning & Personas**: Powered by OmniVoice for expressive, multilingual text-to-speech with custom voice personas
 - **⚡ Optimized Performance**: Runs efficiently on consumer-grade devices (CPU or GPU)
 - **🔒 Privacy-First**: All processing happens locally - no data leaves your machine
@@ -21,7 +21,7 @@ Majordome uses a multithreaded pipeline architecture:
 
 1. **Audio Capture Thread**: Continuously captures audio from your microphone
 2. **VAD + ASR Thread**: Detects speech and transcribes it using Whisper
-3. **LLM + TTS Thread**: Generates responses via Llama and speaks them using OmniVoice
+3. **LLM + TTS Thread**: Generates responses via Gemma and speaks them using OmniVoice
 
 This design ensures low latency and responsive interactions while maximizing resource efficiency.
 
@@ -71,18 +71,18 @@ Models are **not included** in this repository and must be downloaded separately
 
 Faster Whisper downloads the `small` model automatically on first run and caches it locally. No manual download is required.
 
-#### Llama 3.2 3B Instruct — GGUF (Language Model)
+#### Gemma 4 E4B Instruct — GGUF (Language Model)
 
 Download the quantized model file from Hugging Face:
 
 ```
-https://huggingface.co/lmstudio-community/Llama-3.2-3B-Instruct-GGUF
+https://huggingface.co/DuoNeural/Gemma-4-E4B-Q4_K_M
 ```
 
-Download the file named **`Llama-3.2-3B-Instruct-Q4_K_M.gguf`** and place it at:
+Download the file named **`gemma-4-e4b-it.Q4_K_M.gguf`** and place it at:
 
 ```
-models/Llama-3.2-3B-Instruct-Q4_K_M.gguf
+models/gemma-4-e4b-it.Q4_K_M.gguf
 ```
 
 #### OmniVoice (Voice Cloning & Persona TTS)
@@ -110,6 +110,13 @@ cp config.toml.example config.toml
 Open `config.toml` and set your preferred persona, STT model, and LLM model. The default
 values work out of the box for most setups.
 
+Update the LLM model to point to a new model file:
+
+```toml
+[llm]
+model = "gemma-4-e4b-it.Q4_K_M.gguf"
+```
+
 ### 6. Run Majordome
 
 ```bash
@@ -120,7 +127,7 @@ Speak into your microphone after startup. Majordome will transcribe your speech,
 
 ## ⚠️ Disclaimers
 
-Majordome is not the creator, originator, or owner of any third-party model used with this project. Each model (including but not limited to Llama, Whisper, and OmniVoice) is created and provided by independent third parties. Majordome does not endorse, support, represent, or guarantee the completeness, truthfulness, accuracy, or reliability of any such model.
+Majordome is not the creator, originator, or owner of any third-party model used with this project. Each model (including but not limited to Gemma, Whisper, and OmniVoice) is created and provided by independent third parties. Majordome does not endorse, support, represent, or guarantee the completeness, truthfulness, accuracy, or reliability of any such model.
 
 You understand that these models can produce content that might be offensive, harmful, inaccurate, inappropriate, or deceptive. Each model is the sole responsibility of the person or entity who originated it. Majordome does not monitor or control third-party models and cannot take responsibility for their outputs.
 
