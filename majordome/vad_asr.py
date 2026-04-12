@@ -18,13 +18,9 @@ def vad_asr_thread():
         rms = np.sqrt(np.mean(chunk ** 2))
 
         if rms > SILENCE_THRESH:
-            # Voice detected → cut the TTS if it speaks
-            if is_speaking.is_set():
-                stop_event.set()
-
             if not speaking:
                 speaking = True
-                utterance = list(pre_roll)  # Includes pre-roll
+                utterance = list(pre_roll)
             silent_count = 0
             utterance.append(chunk)
 
@@ -32,11 +28,17 @@ def vad_asr_thread():
             utterance.append(chunk)
             silent_count += 1
             if silent_count >= silence_limit:
-                # Utterance ends → transcription
+                # Utterance ends → transcription first
                 audio_data = np.concatenate(utterance)
                 text = transcribe_audio(audio_data)
+
                 if text.strip():
+                    # Real sentence confirmed → NOW interrupt TTS
+                    if is_speaking.is_set():
+                        stop_event.set()
+                        is_speaking.wait(timeout=3.0)  # wait for TTS to actually stop
                     text_queue.put(text.strip())
+
                 # Reset
                 speaking = False
                 utterance = []
