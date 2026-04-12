@@ -85,13 +85,6 @@ Download the file named **`Llama-3.2-3B-Instruct-Q4_K_M.gguf`** and place it at:
 models/Llama-3.2-3B-Instruct-Q4_K_M.gguf
 ```
 
-#### Expected `models/` directory layout
-
-```
-models/
-└──Llama-3.2-3B-Instruct-Q4_K_M.gguf
-```
-
 #### OmniVoice (Voice Cloning & Persona TTS)
 
 Majordome uses [OmniVoice](https://huggingface.co/k2-fsa/OmniVoice) for expressive, multilingual
