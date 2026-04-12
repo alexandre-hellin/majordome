@@ -1,4 +1,4 @@
-from .llm import ask_llm
+from .llm import ask_llm, maybe_summarize_history
 from .tts import speak_interruptible
 from . import shared
 
@@ -11,6 +11,7 @@ def llm_tts_thread():
 
         with shared.conv_lock:
             shared.conversation.append({"role": "user", "content": text})
+            shared.conversation = maybe_summarize_history(shared.conversation)
             history = list(shared.conversation)
 
         shared.stop_event.clear()

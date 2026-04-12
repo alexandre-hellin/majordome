@@ -12,6 +12,8 @@ import torch
 # LLM – Large Language Model Configuration
 MODEL_PATH = str(Path(__file__).parent.parent / "models" / config.get("llm", {}).get("model", ""))
 CONTEXT_SIZE = 131072 >> 3
+MAX_TURNS = 10  # Summary threshold
+SUMMARY_KEEP_TURNS = 4  # Recent messages to keep after the summary
 
 llm = None
 
@@ -36,6 +38,51 @@ def preload():
     """Preload the LLM at startup."""
     _init_llm()
     _warmup()
+
+
+def summarize_old_history(old_messages: list) -> str:
+    """Use the LLM to summarize previous conversations."""
+    formatted = "\n".join(
+        f"{m['role'].upper()}: {m['content']}" for m in old_messages
+    )
+
+    result = llm.create_chat_completion(
+        messages=[
+            {
+                "role": "system",
+                "content": "Tu es un assistant qui résume des conversations de manière concise."
+            },
+            {
+                "role": "user",
+                "content": f"Résume en 3-4 phrases les points clés de cet échange :\n\n{formatted}"
+            }
+        ],
+        max_tokens=150,
+        temperature=0.3,
+        stream=False
+    )
+
+    return result["choices"][0]["message"]["content"]
+
+
+def maybe_summarize_history(conversation: list) -> list:
+    """Summarize the lengthy history while keeping recent exchanges intact."""
+    if len(conversation) <= MAX_TURNS * 2:
+        return conversation
+
+    split = len(conversation) - SUMMARY_KEEP_TURNS * 2
+    old_messages = conversation[:split]
+    recent_messages = conversation[split:]
+
+    print("🧠 Résumé de l'historique en cours...")
+    summary_text = summarize_old_history(old_messages)
+
+    summary_message = {
+        "role": "system",
+        "content": f"Résumé des échanges précédents : {summary_text}"
+    }
+
+    return [summary_message] + recent_messages
 
 
 def _init_llm():
