@@ -13,7 +13,7 @@ from .shared import stop_event
 SAMPLE_RATE = 24000
 AUDIO_BUFFER_SIZE = 4  # Max sentences pre-generated in advance
 SENTENCE_END_TOKENS = (",", ".", "!", "?", "…")
-TOKEN_THRESHOLD = 30  # Minimum number of tokens before cutting a sentence
+TOKEN_THRESHOLD = 10  # Minimum number of tokens before cutting a sentence
 
 model = None
 tts_audio_queue = queue.Queue(maxsize=AUDIO_BUFFER_SIZE)
@@ -44,7 +44,7 @@ def speak_interruptible(stream) -> str:
         buffer += token
         full_text += token
         token_count += 1
-        threshold = TOKEN_THRESHOLD if first_sentence_spoken else 10
+        threshold = TOKEN_THRESHOLD if first_sentence_spoken else 3
 
         ends_with_newline = "\n" in token
         if ends_with_newline or (token_count >= threshold and buffer.rstrip().endswith(SENTENCE_END_TOKENS)):
