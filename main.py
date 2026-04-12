@@ -1,16 +1,20 @@
 import concurrent.futures
 import threading
-import time
+import signal
 
 from majordome import audio_capture_thread, vad_asr_thread, llm_tts_thread, get_persona
 from majordome import preload_stt, preload_llm, preload_tts, preload_persona
 from majordome import shutdown_tts
 
+_stop_event = threading.Event()
+
 
 def main():
+    signal.signal(signal.SIGINT, _signal_handler)
     _preload_all()
     print(f"🟢 Majordome démarré ({get_persona().display_name}). Ctrl+C pour quitter.")
 
+    # Start STS pipeline
     threads = [
         threading.Thread(target=audio_capture_thread, daemon=True),
         threading.Thread(target=vad_asr_thread,       daemon=True),
@@ -18,12 +22,16 @@ def main():
     ]
     for t in threads:
         t.start()
-    try:
-        while True:
-            time.sleep(0.1)
-    except KeyboardInterrupt:
-        _shutdown_all()
-        print("\n🛑 Arrêt.")
+
+    # Wait for SIGINT signal
+    _stop_event.wait()
+    _shutdown_all()
+    print("\n🛑 Arrêt.")
+
+
+def _signal_handler(sig, frame):
+    """Catches SIGINT before other Fortran libs (NumPy, sounddevice…)."""
+    _stop_event.set()
 
 
 def _preload_all():
