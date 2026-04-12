@@ -1,4 +1,4 @@
-from llama_cpp import Llama
+from llama_cpp import Llama, GGML_TYPE_Q4_0, GGML_TYPE_Q8_0
 from pathlib import Path
 
 from .config import config
@@ -49,8 +49,8 @@ def _init_llm():
             n_batch=512,
             n_ubatch=512,
             n_gpu_layers=-1 if torch.cuda.is_available() else 0,
-            type_k=2, # q4_0
-            type_v=2, # q4_0
+            type_k=GGML_TYPE_Q8_0,
+            type_v=GGML_TYPE_Q4_0,
             flash_attn=True,
             verbose=False
         )
