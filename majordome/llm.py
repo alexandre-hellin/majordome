@@ -54,10 +54,10 @@ def summarize_old_history(old_messages: list) -> str:
             },
             {
                 "role": "user",
-                "content": f"Résume en 3-4 phrases les points clés de cet échange :\n\n{formatted}"
+                "content": f"Résume en quelques phrases les points clés de cet échange :\n\n{formatted}"
             }
         ],
-        max_tokens=150,
+        max_tokens=1024,
         temperature=1.0,
         stream=False
     )
