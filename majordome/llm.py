@@ -58,7 +58,7 @@ def summarize_old_history(old_messages: list) -> str:
             }
         ],
         max_tokens=150,
-        temperature=0.3,
+        temperature=1.0,
         stream=False
     )
 
