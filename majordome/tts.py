@@ -15,8 +15,9 @@ AUDIO_BUFFER_SIZE = 4  # Max sentences pre-generated in advance
 SENTENCE_END_TOKENS = ("! ", "? ", ". ", ".\n", "!\n", "?\n")
 TOKEN_THRESHOLD = 10  # Minimum number of tokens before cutting a sentence
 
-model = None
+model: OmniVoice | None = None
 tts_audio_queue = queue.Queue(maxsize=AUDIO_BUFFER_SIZE)
+
 
 def speak_interruptible(stream) -> str:
     """Stream LLM tokens, synthesize sentences via TTS, and play them back."""
@@ -64,13 +65,13 @@ def speak_interruptible(stream) -> str:
     return full_text
 
 
-def preload():
+def preload() -> None:
     """Preload the OmniVoice model at startup."""
     _init_model()
     _warmup_model()
 
 
-def shutdown():
+def shutdown() -> None:
     """Shutdown the TTS thread gracefully."""
     stop_event.set()
     tts_audio_queue.put(None)
@@ -108,6 +109,7 @@ def _playback_worker(audio_queue: queue.Queue) -> None:
     except Exception:
         pass  # Avoid unexpected exception from happening when exiting the thread with SIGINT
 
+
 def _flush_buffer(buffer: str, sentence_queue: queue.Queue) -> str:
     """Send a completed sentence to the TTS queue and reset the buffer."""
     sentence = buffer.strip()
@@ -116,7 +118,7 @@ def _flush_buffer(buffer: str, sentence_queue: queue.Queue) -> str:
     return ""
 
 
-def _init_model():
+def _init_model() -> None:
     """Initialize the OmniVoice model if not already loaded."""
     global model
     if model is None:
@@ -133,7 +135,7 @@ def _init_model():
             model = torch.compile(model, mode="reduce-overhead")
 
 
-def _warmup_model():
+def _warmup_model() -> None:
     """
     Warm up the OmniVoice model by running a silent inference pass.
     Pre-allocates memory and compiles kernels on the active device.
