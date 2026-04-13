@@ -128,16 +128,21 @@ def _init_model():
             device_map=device,
             dtype=dtype,
         )
+        # Compile model to optimize CUDA kernels
+        if device == "cuda":
+            model = torch.compile(model, mode="reduce-overhead")
 
 
 def _warmup_model():
     """
     Warm up the OmniVoice model by running a silent inference pass.
-    This pre-allocates memory and improves performance.
+    Pre-allocates memory and compiles kernels on the active device.
     """
     warmup_text = "Bonjour !"
 
     try:
+        device = next(model.parameters()).device
+
         audio_tensors = model.generate(
             text=warmup_text,
             ref_audio=get_persona().audio,
@@ -146,6 +151,10 @@ def _warmup_model():
         # Consume the tensors to trigger full computation without playing audio
         for tensor in audio_tensors:
             _ = tensor.squeeze().cpu().numpy()
+
+        # Synchronize CUDA kernels if running on GPU to ensure warmup is fully complete
+        if device.type == "cuda":
+            torch.cuda.synchronize()
 
     except Exception as e:
         print("❌ Model warmup failed:", e)
