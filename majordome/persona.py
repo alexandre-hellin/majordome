@@ -1,6 +1,6 @@
 from pathlib import Path
 from datetime import datetime
-from .config import config
+from majordome.config import config
 import tomllib
 
 PERSONAS_DIR = Path(__file__).parent.parent / "personas"
@@ -24,8 +24,8 @@ class Persona:
         return {}
 
     @property
-    def system_suffix(self) -> str:
-        return self.config.get("prompt", {}).get("system_suffix", "")
+    def voice_transcription(self) -> str | None:
+        return self.config.get("voice", {}).get("transcription", None)
 
     @property
     def display_name(self) -> str:

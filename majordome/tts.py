@@ -1,37 +1,43 @@
 import queue
 import threading
 import sounddevice as sd
+import numpy as np
 import torch
 
+from concurrent.futures import ThreadPoolExecutor
+from collections import deque
 from omnivoice import OmniVoice
 
-from .config import config
-from .persona import get_persona
-from .shared import stop_event
+from majordome.config import config
+from majordome.persona import get_persona
+from majordome.shared import stop_event
+from majordome.dsp import trim_silence, apply_crossfade
 
 # TTS – Output Audio Configuration
 SAMPLE_RATE = 24000
-AUDIO_BUFFER_SIZE = 4  # Max sentences pre-generated in advance
-SENTENCE_END_TOKENS = ("! ", "? ", ". ", ".\n", "!\n", "?\n")
-TOKEN_THRESHOLD = 10  # Minimum number of tokens before cutting a sentence
+AUDIO_BUFFER_SIZE = 3  # Max sentences pre-generated in advance
+CROSSFADE_MS = 10  # Crossfade length between chunks (in milliseconds)
+SILENCE_RMS_THRESHOLD = 0.01 # RMS threshold below which audio is considered silence and trimmed
+SILENCE_WINDOW_MS = 5 # Analysis window size for RMS calculation (in milliseconds)
+MAX_TTS_WORKERS = 2
+LANGUAGE="fr"
 
 model: OmniVoice | None = None
 tts_audio_queue = queue.Queue(maxsize=AUDIO_BUFFER_SIZE)
+_voice_clone_prompt = None
 
 
 def speak_interruptible(stream) -> str:
     """Stream LLM tokens, synthesize sentences via TTS, and play them back."""
     sentence_queue = queue.Queue()
 
-    tts_thread = threading.Thread(target=_tts_worker, args=(sentence_queue, tts_audio_queue), daemon=True)
+    tts_thread = threading.Thread(target=_tts_orchestrator, args=(sentence_queue, tts_audio_queue), daemon=True)
     playback_thread = threading.Thread(target=_playback_worker, args=(tts_audio_queue,), daemon=True)
     tts_thread.start()
     playback_thread.start()
 
     buffer = ""
     full_text = ""
-    token_count = 0
-    first_sentence_spoken = False
 
     for chunk in stream:
         if stop_event.is_set():
@@ -44,14 +50,10 @@ def speak_interruptible(stream) -> str:
         print(token, end="", flush=True)
         buffer += token
         full_text += token
-        token_count += 1
-        threshold = TOKEN_THRESHOLD if first_sentence_spoken else 3
 
         ends_with_newline = "\n" in token
-        if ends_with_newline or (token_count >= threshold and buffer.rstrip().endswith(SENTENCE_END_TOKENS)):
+        if ends_with_newline:
             buffer = _flush_buffer(buffer, sentence_queue)
-            token_count = 0
-            first_sentence_spoken = True
 
     # Send any remaining text
     if buffer.strip() and not stop_event.is_set():
@@ -77,35 +79,81 @@ def shutdown() -> None:
     tts_audio_queue.put(None)
 
 
-def _tts_worker(sentence_queue: queue.Queue, audio_queue: queue.Queue) -> None:
-    """Generate TTS audio tensors ahead of playback."""
-    while True:
-        sentence = sentence_queue.get()
-        if sentence is None:
-            audio_queue.put(None)  # Propagate sentinel to playback
-            break
-        if stop_event.is_set():
-            continue  # Drain queue without processing
-        try:
-            for tensor in model.generate(text=sentence, ref_audio=get_persona().audio):
-                audio_queue.put(tensor.squeeze().cpu().numpy())
-        except Exception as e:
-            print("❌ TTS error:", e)
+def _tts_orchestrator(sentence_queue: queue.Queue, audio_queue: queue.Queue) -> None:
+    """Generate TTS audio tensors with a pool of concurrent workers, preserving order."""
+    with ThreadPoolExecutor(max_workers=MAX_TTS_WORKERS) as executor:
+        pending: deque = deque()
+
+        while True:
+            sentence = sentence_queue.get()
+
+            if sentence is None:
+                break  # Sentinel received, stop accepting sentences
+
+            if not stop_event.is_set():
+                pending.append(executor.submit(_generate_tts_audio, sentence))
+
+            # Unstack the completed futures at the top (to preserve the order)
+            while pending and pending[0].done():
+                _flush_tts_future(pending.popleft(), audio_queue)
+
+        # Clear the remaining futures in order
+        for future in pending:
+            if stop_event.is_set():
+                future.cancel()
+            else:
+                _flush_tts_future(future, audio_queue)
+
+    audio_queue.put(None)  # Propagate sentinel to playback
+
+
+def _generate_tts_audio(sentence: str) -> list:
+    """Generate TTS audio tensors for a single sentence."""
+    return [
+        tensor.squeeze().cpu().numpy()
+        for tensor in model.generate(text=sentence, language=LANGUAGE, voice_clone_prompt=_voice_clone_prompt)
+    ]
+
+
+def _flush_tts_future(future, audio_queue: queue.Queue) -> None:
+    """Write audio chunks from a completed future to the audio queue."""
+    try:
+        for arr in future.result():
+            audio_queue.put(arr)
+    except Exception as e:
+        print("❌ TTS error:", e)
 
 
 def _playback_worker(audio_queue: queue.Queue) -> None:
-    """Write audio chunks to the output stream block by block."""
+    """Write audio chunks to the output stream with crossfade to avoid glitches."""
+    crossfade_samples = int(SAMPLE_RATE * CROSSFADE_MS / 1000)
+    previous_tail = np.zeros(crossfade_samples, dtype="float32")
+
     try:
-        with sd.OutputStream(samplerate=SAMPLE_RATE, channels=1, dtype="float32") as stream:
+        with sd.OutputStream(
+            samplerate=SAMPLE_RATE,
+            channels=1,
+            dtype="float32",
+            latency="low",
+        ) as stream:
             while True:
                 audio = audio_queue.get()
                 if audio is None:
                     break
-                if not stop_event.is_set():
-                    try:
-                        stream.write(audio.astype("float32"))
-                    except sd.PortAudioError:
-                        break
+                if stop_event.is_set():
+                    break
+
+                chunk = trim_silence(audio.astype("float32"), SAMPLE_RATE, SILENCE_WINDOW_MS, SILENCE_RMS_THRESHOLD)
+                chunk = apply_crossfade(previous_tail, chunk)
+
+                # Save the tail of this chunk for the next crossfade
+                previous_tail = chunk[-crossfade_samples:].copy() if len(chunk) >= crossfade_samples else chunk.copy()
+
+                try:
+                    stream.write(chunk)
+                except sd.PortAudioError:
+                    break
+
     except Exception:
         pass  # Avoid unexpected exception from happening when exiting the thread with SIGINT
 
@@ -120,19 +168,31 @@ def _flush_buffer(buffer: str, sentence_queue: queue.Queue) -> str:
 
 def _init_model() -> None:
     """Initialize the OmniVoice model if not already loaded."""
-    global model
+    global model, _voice_clone_prompt
     if model is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"
         dtype = torch.float16 if device == "cuda" else torch.float32
 
+        # Initialize the TTS model
         model = OmniVoice.from_pretrained(
             config.get("tts", {}).get("model", ""),
             device_map=device,
             dtype=dtype,
         )
+
         # Compile model to optimize CUDA kernels
         if device == "cuda":
             model = torch.compile(model, mode="reduce-overhead")
+
+        # Precalculate the voice clone prompt only once
+        _voice_clone_prompt = model.create_voice_clone_prompt(
+            ref_audio=get_persona().audio,
+            ref_text=get_persona().voice_transcription,
+        )
+
+        # Empty cache to free up precious GPU memory
+        if device == "cuda":
+            torch.cuda.empty_cache()
 
 
 def _warmup_model() -> None:
@@ -147,7 +207,8 @@ def _warmup_model() -> None:
 
         audio_tensors = model.generate(
             text=warmup_text,
-            ref_audio=get_persona().audio,
+            language=LANGUAGE,
+            voice_clone_prompt=_voice_clone_prompt
         )
 
         # Consume the tensors to trigger full computation without playing audio
