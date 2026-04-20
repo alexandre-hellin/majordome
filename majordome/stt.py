@@ -6,9 +6,9 @@ import numpy as np
 # STT – Input Audio Configuration
 SAMPLE_RATE = 16000
 CHUNK_SIZE = 512
-SILENCE_THRESH = 0.015
-SILENCE_SECS = 0.8  # Silence after speaking → end of utterance
-PRE_ROLL_SECS = 0.3  # Chunks kept before voice detection
+SILENCE_THRESH = 0.005
+SILENCE_SECS = 1.5  # Silence after speaking → end of utterance
+PRE_ROLL_SECS = 0.4  # Chunks kept before voice detection
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 WHISPER_MODEL = config.get("stt", {}).get("model", "small")
 LANGUAGE = "fr"
